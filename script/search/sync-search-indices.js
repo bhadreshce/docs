@@ -7,18 +7,28 @@
 //
 // [end-readme]
 
-import path from 'path'
+import { existsSync } from 'fs'
 
+import assert from 'assert'
 import { program, Option } from 'commander'
 
 import { languageKeys } from '../../lib/languages.js'
-import { allVersionKeys } from '../../lib/all-versions.js'
+import { allVersions } from '../../lib/all-versions.js'
 import searchSync from './sync.js'
 
-const DEFAULT_OUT_DIRECTORY = path.join('lib', 'search', 'indexes')
+const shortNames = Object.fromEntries(
+  Object.values(allVersions).map((info) => {
+    const shortName = info.hasNumberedReleases
+      ? info.miscBaseName + info.currentRelease
+      : info.miscBaseName
+    return [shortName, info]
+  })
+)
+
+const allVersionKeys = [...Object.keys(shortNames), ...Object.keys(allVersions)]
 
 program
-  .description('Creates search records (and Lunr indexes) by scraping')
+  .description('Creates search records by scraping')
   .option('-v, --verbose', 'Verbose outputs')
   .addOption(new Option('-V, --version <VERSION>', 'Specific versions').choices(allVersionKeys))
   .addOption(
@@ -27,21 +37,15 @@ program
   .addOption(
     new Option('--not-language <LANGUAGE>', 'Specific language to omit').choices(languageKeys)
   )
-  .option('-d, --dry-run', 'Does not write to disk')
-  .option(
-    '-o, --out-directory <DIRECTORY>',
-    `Where to dump the created files (default ${DEFAULT_OUT_DIRECTORY})`
-  )
-  .option('--no-compression', `Do not Brotli compress the created .json files (default false)`)
-  // Once we've fully removed all Lunr indexing code, we can remove this option
-  // and change where it's used to be that the default is to not generate
-  // any Lunr indexes.
-  .option('--no-lunr-index', `Do not generate a Lunr index, just the records file (default false)`)
+  .option('--no-markers', 'Do not print a marker for each parsed document')
+  .option('--filter <MATCH>', 'Filter to only do pages that match this string')
+  .option('-p, --popular-pages <PATH>', 'Popular pages JSON file (defaults to $POPULAR_PAGES_JSON)')
+  .argument('<out-directory>', 'where the indexable files should be written')
   .parse(process.argv)
 
-main(program.opts())
+main(program.opts(), program.args)
 
-async function main(opts) {
+async function main(opts, args) {
   let language
   if ('language' in opts) {
     language = opts.language
@@ -84,27 +88,54 @@ async function main(opts) {
     }
   }
 
-  let dryRun = false
-  if ('dryRun' in opts) {
-    dryRun = opts.dryRun
-  } else {
-    dryRun = Boolean(JSON.parse(process.env.DRY_RUN || 'false'))
+  let popularPagesFilePath
+  const { popularPages } = opts
+  const { POPULAR_PAGES_JSON } = process.env
+  if (popularPages) {
+    if (!existsSync(popularPages)) {
+      throw new Error(`'${popularPages}' does not exist`)
+    }
+    popularPagesFilePath = popularPages
+  } else if (POPULAR_PAGES_JSON) {
+    if (!existsSync(POPULAR_PAGES_JSON)) {
+      throw new Error(`'${POPULAR_PAGES_JSON}' does not exist`)
+    }
+    popularPagesFilePath = POPULAR_PAGES_JSON
   }
 
-  const outDirectory = opts.outDirectory || DEFAULT_OUT_DIRECTORY
+  // A `--version` or `process.env.VERSION` was specified, we need to convert
+  // it to the long name. I.e. `free-pro-team@latest`. Not `dotcom`.
+  // But it could also have beeb specified as `all` which means that `version`
+  // here ill be `undefined` which is also OK.
+  // const indexVersion = shortNames[version].hasNumberedReleases
+  //   ? shortNames[version].currentRelease
+  //   : shortNames[version].miscBaseName
 
-  const compressFiles = !!opts.compression
+  let indexVersion
+  if (version && version !== 'all') {
+    // If it has been specified, it needs to be in the "long-form".
+    // I.e. `enterprise-server@3.5` not `ghes-3.5`.
+    indexVersion = version in shortNames ? shortNames[version].version : version
+  }
+  assert(
+    !indexVersion || indexVersion in allVersions,
+    `version must be undefined or one of ${Object.keys(allVersions)}`
+  )
 
-  const generateLunrIndex = !!opts.lunrIndex
+  const [outDirectory] = args
+
+  const config = {
+    noMarkers: !opts.markers,
+    filter: opts.filter,
+    popularPagesFilePath,
+  }
 
   const options = {
-    dryRun,
     language,
     notLanguage,
-    version,
+    version: indexVersion,
     outDirectory,
-    compressFiles,
-    generateLunrIndex,
+    config,
   }
   await searchSync(options)
 }

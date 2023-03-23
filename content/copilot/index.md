@@ -1,5 +1,5 @@
 ---
-title: GitHub Copilot
+title: GitHub Copilot documentation
 shortTitle: GitHub Copilot
 intro: 'You can use {% data variables.product.prodname_copilot %} to get autocomplete-style suggestions from an AI pair programmer as you code.'
 redirect_from:
@@ -10,7 +10,7 @@ introLinks:
   overview: /copilot/overview-of-github-copilot/about-github-copilot
   quickstart: /copilot/quickstart
 featuredLinks:
-  guides:
+  startHere:
     - /copilot/getting-started-with-github-copilot/getting-started-with-github-copilot-in-visual-studio-code
     - /copilot/getting-started-with-github-copilot/getting-started-with-github-copilot-in-a-jetbrains-ide
     - /copilot/getting-started-with-github-copilot/getting-started-with-github-copilot-in-visual-studio
@@ -19,7 +19,7 @@ featuredLinks:
     - /billing/managing-billing-for-github-copilot/about-billing-for-github-copilot
     - /copilot/configuring-github-copilot/configuring-github-copilot-in-visual-studio-code
     - /copilot/configuring-github-copilot/configuring-github-copilot-in-a-jetbrains-ide
-    - /copilot/configuring-github-copilot/configuring-github-copilot-in-visual-studio
+    - /copilot/configuring-github-copilot/configuring-github-copilot-settings-on-githubcom
 layout: product-landing
 versions:
   feature: copilot
@@ -28,6 +28,7 @@ children:
   - /overview-of-github-copilot
   - /getting-started-with-github-copilot
   - /configuring-github-copilot
+  - /troubleshooting-github-copilot
 topics:
   - Copilot
 ---
